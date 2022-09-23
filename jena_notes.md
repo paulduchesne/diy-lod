@@ -1,4 +1,4 @@
-#### notes on deploying jena to ubtuntu server
+#### notes on deploying jena to ubuntu server
 
 > ssh root@138.197.180.196
 
