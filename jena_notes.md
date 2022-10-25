@@ -1,25 +1,75 @@
 #### notes on deploying jena to ubuntu server
 
-> ssh root@138.197.180.196
+~ server
 
-> adduser paulduchesne
+ssh root@206.189.59.185
 
-> usermod -aG sudo paulduchesne
+adduser paulduchesne
 
-> rsync --archive --chown=paulduchesne:paulduchesne ~/.ssh /home/paulduchesne
+usermod -aG sudo paulduchesne
 
-> exit
+rsync --archive --chown=paulduchesne:paulduchesne ~/.ssh /home/paulduchesne
 
-> ssh paulduchesne@138.197.180.196
+exit
 
-> sudo apt update
+~ jena
 
-> sudo apt install default-jre
+ssh paulduchesne@206.189.59.185
 
-> wget https://dlcdn.apache.org/jena/binaries/apache-jena-fuseki-4.6.1.tar.gz
+sudo apt update
 
-> tar -xzvf apache-jena-fuseki-4.6.1.tar.gz
+sudo apt install default-jre
 
-> cd apache-jena-fuseki-4.6.1/
+wget https://dlcdn.apache.org/jena/binaries/apache-jena-fuseki-4.6.1.tar.gz
 
-> screen ./apache-jena-fuseki-4.6.1/fuseki-server --memTDB /my-dataset
+tar -xzvf apache-jena-fuseki-4.6.1.tar.gz
+
+cd apache-jena-fuseki-4.6.1/
+
+screen ./apache-jena-fuseki-4.6.1/fuseki-server --memTDB /my-dataset
+
+~ nginx
+
+sudo apt install nginx certbot python3-certbot-nginx
+
+certbot certonly --nginx --noninteractive --agree-tos --email paulduchesne@tuta.io -d filmbase.wiki
+
+sudo nano /etc/nginx/nginx.conf
+
+```
+user  paulduchesne;
+worker_processes  1;
+
+error_log  /var/log/nginx/error.log warn;
+pid        /var/run/nginx.pid;
+
+events {}
+
+http {
+    client_max_body_size 100M;
+    server {
+        listen 80;
+        server_name filmbase.wiki;
+        return 301 https://$server_name$request_uri;
+    }
+    server {
+        listen 443 ssl;
+        server_name filmbase.wiki;
+        ssl_certificate     /etc/letsencrypt/live/filmbase.wiki/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/filmbase.wiki/privkey.pem;
+        ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
+        ssl_ciphers         HIGH:!aNULL:!MD5;
+        access_log /var/log/nginx/filmbase.wiki.log;
+        location / {
+            proxy_pass http://127.0.0.1:3030;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-forwarded-host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }  
+} 
+```
+
+sudo service nginx reload
